@@ -48,6 +48,14 @@ data "kubernetes_service_v1" "vault" {
   depends_on = [helm_release.vault_cluster]
 }
 
+data "kubernetes_service_v1" "vault_active" {
+  metadata {
+    name      = "vault-active"
+    namespace = var.kube_namespace
+  }
+  depends_on = [helm_release.vault_cluster]
+}
+
 data "kubernetes_service_v1" "vault_ui" {
   metadata {
     name      = "vault-ui"
@@ -57,8 +65,8 @@ data "kubernetes_service_v1" "vault_ui" {
 }
 
 output "vault_loadbalancer_hostname" {
-  description = "Internal LoadBalancer hostname for Vault API"
-  value       = "http://${try(data.kubernetes_service_v1.vault.status[0].load_balancer[0].ingress[0].hostname, "pending")}:8200"
+  description = "LoadBalancer hostname for the active Vault API service"
+  value       = "http://${try(data.kubernetes_service_v1.vault_active.status[0].load_balancer[0].ingress[0].hostname, "pending")}:8200"
 }
 
 output "vault_ui_loadbalancer_hostname" {
