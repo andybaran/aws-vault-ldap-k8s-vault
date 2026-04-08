@@ -6,6 +6,5 @@ output "ldap_bindpass" {
 
 output "static_roles" {
   description = "Static role seed data recovered from the AD bootstrap secret."
-  value       = local.payload == null ? null : local.payload.static_roles
-  sensitive   = true
+  value       = local.payload == null ? null : nonsensitive(local.payload.static_roles)
 }
