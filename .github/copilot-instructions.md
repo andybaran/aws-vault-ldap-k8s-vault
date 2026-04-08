@@ -6,18 +6,27 @@ applyTo: "*.tf,*.hcl,*.md"
 
 ## Goal
 
-Own the Vault slice of the demo. The overall demo still uses Terraform Cloud Stacks to show Vault rotating AD credentials for an app on EKS, and this repo should hold the Vault runtime, LDAP secrets engine configuration, and app-facing auth contracts.
+Own the Vault slice of the demo. This repo should deploy Vault on the shared EKS cluster, configure Vault Secrets Operator and the LDAP secrets engine, and publish the contract the downstream app stack consumes.
 
 ## Scope
 
-- Vault deployment on Kubernetes
-- Vault Secrets Operator, auth wiring, and LDAP secrets engine configuration
-- outputs consumed by the app stack
+- Vault runtime on Kubernetes
+- Vault initialization and licensing prerequisites that used to live in the monolith's `kube1` module
+- Vault Secrets Operator and Kubernetes auth wiring
+- LDAP secrets engine configuration fed by the AD stack
+- linked-stack outputs consumed by the app stack
 
 ## Guardrails
 
 - Keep using Terraform Stacks root files and explicit linked-stack contracts.
 - Keep this repo focused on Vault concerns. Do not absorb EKS platform ownership, AD infrastructure ownership, or app code.
-- Model upstream dependencies on both the k8s and ad repos clearly in variables, outputs, and README text.
-- Keep secrets out of git and prefer references to generated secrets over hard-coded values in docs.
-- When the Vault/app contract changes, update README and output descriptions in the same change.
+- Consume k8s and ad dependencies through `upstream_input` blocks in `deployments.tfdeploy.hcl`.
+- Derive EKS auth locally from the AWS provider instead of consuming a published EKS auth token.
+- Preserve the demo defaults unless a requirement says otherwise:
+  - `ldap_dual_account = true`
+  - `grace_period = 20`
+  - `static_role_rotation_period = 100`
+- Do not reintroduce unused monolith variables like `vault_public_endpoint` or `vault_root_namespace` unless they become necessary.
+- Keep secrets out of git and prefer Terraform Cloud variable sets or linked-stack outputs for sensitive values.
+- Do not publish sensitive operator values like the Vault root token as linked-stack contracts.
+- When the Vault/app contract changes, update `README.md`, stack outputs, and `publish_output` blocks in the same change.
