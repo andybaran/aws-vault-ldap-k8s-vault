@@ -1,7 +1,7 @@
 locals {
   vault_runtime_image     = var.ldap_dual_account ? "ghcr.io/andybaran/vault-with-openldap-plugin:dual-account-rotation" : var.vault_image
   effective_ldap_bindpass = component.ad_bootstrap.ldap_bindpass != null ? component.ad_bootstrap.ldap_bindpass : var.ldap_bindpass
-  effective_static_roles  = component.ad_bootstrap.static_roles != null ? nonsensitive(component.ad_bootstrap.static_roles) : (var.static_roles_json != null ? jsondecode(nonsensitive(var.static_roles_json)) : nonsensitive(var.static_roles))
+  effective_static_roles  = component.ad_bootstrap.static_roles_json != null ? jsondecode(nonsensitive(component.ad_bootstrap.static_roles_json)) : (var.static_roles_json != null ? jsondecode(nonsensitive(var.static_roles_json)) : nonsensitive(var.static_roles))
 }
 
 component "eks_auth" {
