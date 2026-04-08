@@ -13,16 +13,8 @@ upstream_input "ad_stack" {
   source = "app.terraform.io/andybaran/ldap stack/aws-vault-ldap-k8s-ad"
 }
 
-locals {
-  shared_aws_credentials = {
-    AWS_ACCESS_KEY_ID     = store.varset.aws_creds.AWS_ACCESS_KEY_ID
-    AWS_SECRET_ACCESS_KEY = store.varset.aws_creds.AWS_SECRET_ACCESS_KEY
-    AWS_SESSION_TOKEN     = store.varset.aws_creds.AWS_SESSION_TOKEN
-  }
-}
-
 deployment "development" {
-  inputs = merge(local.shared_aws_credentials, {
+  inputs = {
     region                                  = upstream_input.k8s_stack.region
     kube_namespace                          = upstream_input.k8s_stack.kube_namespace
     kube_cluster_endpoint                   = upstream_input.k8s_stack.cluster_endpoint
@@ -38,7 +30,11 @@ deployment "development" {
     ldap_dual_account           = true
     grace_period                = 20
     static_role_rotation_period = 100
-  })
+
+    AWS_ACCESS_KEY_ID     = store.varset.aws_creds.AWS_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY = store.varset.aws_creds.AWS_SECRET_ACCESS_KEY
+    AWS_SESSION_TOKEN     = store.varset.aws_creds.AWS_SESSION_TOKEN
+  }
 }
 
 publish_output "ldap_mount_path" {
