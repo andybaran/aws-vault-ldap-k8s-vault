@@ -43,7 +43,7 @@ Expected inputs from the ad stack:
 - `ldap_binddn`
 - `ldap_bindpass`
 - `ldap_userdn`
-- `static_roles`
+- `static_roles_json`
 
 ## Downstream linked-stack contract
 

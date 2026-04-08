@@ -73,6 +73,14 @@ variable "static_roles" {
     dn       = string
   }))
   sensitive = true
+  default   = null
+}
+
+variable "static_roles_json" {
+  description = "JSON-encoded demo LDAP service accounts and passwords used to seed Vault static roles."
+  type        = string
+  sensitive   = true
+  default     = null
 }
 
 variable "vault_image" {

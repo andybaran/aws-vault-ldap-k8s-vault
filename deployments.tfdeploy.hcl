@@ -21,11 +21,11 @@ deployment "development" {
     kube_cluster_certificate_authority_data = upstream_input.k8s_stack.cluster_ca_data
     eks_cluster_name                        = try(upstream_input.k8s_stack.cluster_name, upstream_input.k8s_stack.cluster_id)
 
-    ldap_url      = upstream_input.ad_stack.ldap_url
-    ldap_binddn   = upstream_input.ad_stack.ldap_binddn
-    ldap_bindpass = upstream_input.ad_stack.ldap_bindpass
-    ldap_userdn   = upstream_input.ad_stack.ldap_userdn
-    static_roles  = upstream_input.ad_stack.static_roles
+    ldap_url          = upstream_input.ad_stack.ldap_url
+    ldap_binddn       = upstream_input.ad_stack.ldap_binddn
+    ldap_bindpass     = upstream_input.ad_stack.ldap_bindpass
+    ldap_userdn       = upstream_input.ad_stack.ldap_userdn
+    static_roles_json = upstream_input.ad_stack.static_roles_json
 
     ldap_dual_account           = true
     grace_period                = 20

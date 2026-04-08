@@ -1,5 +1,6 @@
 locals {
-  vault_runtime_image = var.ldap_dual_account ? "ghcr.io/andybaran/vault-with-openldap-plugin:dual-account-rotation" : var.vault_image
+  vault_runtime_image    = var.ldap_dual_account ? "ghcr.io/andybaran/vault-with-openldap-plugin:dual-account-rotation" : var.vault_image
+  effective_static_roles = var.static_roles_json != null ? jsondecode(var.static_roles_json) : var.static_roles
 }
 
 component "eks_auth" {
@@ -41,7 +42,7 @@ component "vault_ldap_secrets" {
     kubernetes_host             = var.kube_cluster_endpoint
     kubernetes_ca_cert          = var.kube_cluster_certificate_authority_data
     kube_namespace              = var.kube_namespace
-    static_roles                = var.static_roles
+    static_roles                = local.effective_static_roles
     static_role_rotation_period = var.static_role_rotation_period
     ldap_dual_account           = var.ldap_dual_account
     grace_period                = var.grace_period
