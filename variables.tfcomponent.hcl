@@ -58,6 +58,7 @@ variable "ldap_bindpass" {
   description = "Password for Vault's LDAP bind account."
   type        = string
   sensitive   = true
+  default     = null
 }
 
 variable "ldap_userdn" {
@@ -80,6 +81,12 @@ variable "static_roles_json" {
   description = "JSON-encoded demo LDAP service accounts and passwords used to seed Vault static roles."
   type        = string
   sensitive   = true
+  default     = null
+}
+
+variable "ldap_bootstrap_secret_arn" {
+  description = "Secrets Manager ARN containing the LDAP bind password and static role seed data from the AD stack."
+  type        = string
   default     = null
 }
 

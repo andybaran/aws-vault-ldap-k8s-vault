@@ -1,6 +1,7 @@
 locals {
-  vault_runtime_image    = var.ldap_dual_account ? "ghcr.io/andybaran/vault-with-openldap-plugin:dual-account-rotation" : var.vault_image
-  effective_static_roles = var.static_roles_json != null ? jsondecode(var.static_roles_json) : var.static_roles
+  vault_runtime_image     = var.ldap_dual_account ? "ghcr.io/andybaran/vault-with-openldap-plugin:dual-account-rotation" : var.vault_image
+  effective_ldap_bindpass = component.ad_bootstrap.ldap_bindpass != null ? component.ad_bootstrap.ldap_bindpass : var.ldap_bindpass
+  effective_static_roles  = component.ad_bootstrap.static_roles != null ? component.ad_bootstrap.static_roles : (var.static_roles_json != null ? jsondecode(var.static_roles_json) : var.static_roles)
 }
 
 component "eks_auth" {
@@ -8,6 +9,18 @@ component "eks_auth" {
 
   inputs = {
     cluster_name = var.eks_cluster_name
+  }
+
+  providers = {
+    aws = provider.aws.this
+  }
+}
+
+component "ad_bootstrap" {
+  source = "./modules/ad_bootstrap_secret"
+
+  inputs = {
+    secret_arn = var.ldap_bootstrap_secret_arn
   }
 
   providers = {
@@ -36,7 +49,7 @@ component "vault_ldap_secrets" {
   inputs = {
     ldap_url                    = var.ldap_url
     ldap_binddn                 = var.ldap_binddn
-    ldap_bindpass               = var.ldap_bindpass
+    ldap_bindpass               = local.effective_ldap_bindpass
     ldap_userdn                 = var.ldap_userdn
     secrets_mount_path          = "ldap"
     kubernetes_host             = var.kube_cluster_endpoint

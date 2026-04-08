@@ -35,9 +35,8 @@ Expected upstream outputs from the ad stack:
 
 - `ldap_url`
 - `ldap_binddn`
-- `ldap_bindpass`
 - `ldap_userdn`
-- `static_roles_json`
+- `ldap_bootstrap_secret_arn`
 
 Expected published outputs for the app stack:
 
