@@ -36,7 +36,7 @@ resource "vault_ldap_secret_backend" "ad" {
 # One Vault static role is created per entry in var.static_roles.
 # Reference: https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/ldap_secret_backend_static_role
 resource "vault_ldap_secret_backend_static_role" "roles" {
-  for_each = var.ldap_dual_account ? {} : var.static_roles
+  for_each = var.ldap_dual_account ? {} : nonsensitive(var.static_roles)
 
   mount     = vault_ldap_secret_backend.ad[0].path
   role_name = each.key
