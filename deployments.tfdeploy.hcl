@@ -42,51 +42,41 @@ deployment "development" {
 }
 
 publish_output "ldap_mount_path" {
-  type  = string
   value = deployment.development.ldap_mount_path
 }
 
 publish_output "ldap_secrets_mount_path" {
-  type  = string
   value = deployment.development.ldap_secrets_mount_path
 }
 
 publish_output "vso_vault_auth_name" {
-  type  = string
   value = deployment.development.vso_vault_auth_name
 }
 
 publish_output "vault_app_auth_role_name" {
-  type  = string
   value = deployment.development.vault_app_auth_role_name
 }
 
 publish_output "ldap_dual_account" {
-  type  = bool
   value = deployment.development.ldap_dual_account
 }
 
 publish_output "grace_period" {
-  type  = number
   value = deployment.development.grace_period
 }
 
 publish_output "static_role_rotation_period" {
-  type  = number
   value = deployment.development.static_role_rotation_period
 }
 
 publish_output "vault_service_name" {
-  type  = string
   value = deployment.development.vault_service_name
 }
 
 publish_output "vault_api_addr" {
-  type  = string
   value = deployment.development.vault_api_addr
 }
 
 publish_output "vault_ui_addr" {
-  type  = string
   value = deployment.development.vault_ui_addr
 }
