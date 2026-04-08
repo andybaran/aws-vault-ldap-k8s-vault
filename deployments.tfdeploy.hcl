@@ -23,7 +23,10 @@ deployment "development" {
 
     ldap_url                  = upstream_input.ad_stack.ldap_url
     ldap_binddn               = upstream_input.ad_stack.ldap_binddn
+    ldap_bindpass             = null
     ldap_userdn               = upstream_input.ad_stack.ldap_userdn
+    static_roles              = null
+    static_roles_json         = null
     ldap_bootstrap_secret_arn = upstream_input.ad_stack.ldap_bootstrap_secret_arn
 
     ldap_dual_account           = true
