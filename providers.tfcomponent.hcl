@@ -3,10 +3,6 @@ required_providers {
     source  = "hashicorp/aws"
     version = "6.27.0"
   }
-  vault = {
-    source  = "hashicorp/vault"
-    version = "5.6.0"
-  }
   kubernetes = {
     source  = "hashicorp/kubernetes"
     version = "3.0.1"
@@ -15,9 +11,9 @@ required_providers {
     source  = "hashicorp/helm"
     version = "3.1.1"
   }
-  time = {
-    source  = "hashicorp/time"
-    version = "0.13.1"
+  vault = {
+    source  = "hashicorp/vault"
+    version = "5.6.0"
   }
 }
 
@@ -30,30 +26,28 @@ provider "aws" "this" {
   }
 }
 
-provider "helm" "this" {
+provider "kubernetes" "this" {
   config {
-    kubernetes = {
-      host                   = component.eks_context.cluster_endpoint
-      cluster_ca_certificate = base64decode(component.eks_context.cluster_certificate_authority_data)
-      token                  = component.eks_context.token
-    }
+    host                   = var.kube_cluster_endpoint
+    cluster_ca_certificate = base64decode(var.kube_cluster_certificate_authority_data)
+    token                  = component.eks_auth.token
   }
 }
 
-provider "kubernetes" "this" {
+provider "helm" "this" {
   config {
-    host                   = component.eks_context.cluster_endpoint
-    cluster_ca_certificate = base64decode(component.eks_context.cluster_certificate_authority_data)
-    token                  = component.eks_context.token
+    kubernetes = {
+      host                   = var.kube_cluster_endpoint
+      cluster_ca_certificate = base64decode(var.kube_cluster_certificate_authority_data)
+      token                  = component.eks_auth.token
+    }
   }
 }
 
 provider "vault" "this" {
   config {
-    address         = component.vault_runtime.vault_loadbalancer_hostname
-    token           = component.vault_runtime.vault_root_token
+    address         = component.vault_cluster.vault_loadbalancer_hostname
+    token           = component.vault_cluster.vault_root_token
     skip_tls_verify = true
   }
 }
-
-provider "time" "this" {}

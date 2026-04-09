@@ -52,33 +52,20 @@ resource "vault_generic_endpoint" "ldap_config" {
   depends_on = [vault_mount.ldap_dual_account]
 }
 
-locals {
-  dual_account_role_pairs = var.ldap_dual_account ? {
-    (var.dual_account_static_role_name) = ["svc-rotate-a", "svc-rotate-b"]
-    "vault-agent-dual-role"             = ["svc-rotate-c", "svc-rotate-d"]
-    "csi-dual-role"                     = ["svc-rotate-e", "svc-rotate-f"]
-  } : {}
+# Create dual-account static role with svc-rotate-a (primary) and svc-rotate-b (secondary)
+resource "vault_generic_endpoint" "ldap_dual_static_role" {
+  count = var.ldap_dual_account ? 1 : 0
 
-  single_account_role_keys = var.ldap_dual_account ? {
-    "svc-single" = "svc-single"
-    "svc-lib"    = "svc-lib"
-  } : {}
-}
-
-# Create dual-account static roles from the AD stack seed data.
-resource "vault_generic_endpoint" "dual_account_static_roles" {
-  for_each = local.dual_account_role_pairs
-
-  path = "${var.secrets_mount_path}/static-role/${each.key}"
+  path = "${var.secrets_mount_path}/static-role/${var.dual_account_static_role_name}"
 
   disable_read   = true
   disable_delete = false
 
   data_json = jsonencode({
-    username          = var.static_roles[each.value[0]].username
-    dn                = var.static_roles[each.value[0]].dn
-    username_b        = var.static_roles[each.value[1]].username
-    dn_b              = var.static_roles[each.value[1]].dn
+    username          = "svc-rotate-a"
+    dn                = "CN=svc-rotate-a,CN=Users,DC=mydomain,DC=local"
+    username_b        = "svc-rotate-b"
+    dn_b              = "CN=svc-rotate-b,CN=Users,DC=mydomain,DC=local"
     rotation_period   = "${var.static_role_rotation_period}s"
     dual_account_mode = true
     grace_period      = "${var.grace_period}s"
@@ -87,19 +74,72 @@ resource "vault_generic_endpoint" "dual_account_static_roles" {
   depends_on = [vault_generic_endpoint.ldap_config]
 }
 
-# Single-account static roles for svc-single and svc-lib.
+# Single-account static roles for svc-single and svc-lib
+# The custom dual-account plugin also supports standard single-account static roles
 resource "vault_generic_endpoint" "ldap_single_static_role" {
-  for_each = local.single_account_role_keys
+  for_each = var.ldap_dual_account ? {
+    "svc-single" = {
+      username = "svc-single"
+      dn       = "CN=svc-single,CN=Users,DC=mydomain,DC=local"
+    }
+    "svc-lib" = {
+      username = "svc-lib"
+      dn       = "CN=svc-lib,CN=Users,DC=mydomain,DC=local"
+    }
+  } : {}
 
-  path = "${var.secrets_mount_path}/static-role/${each.key}"
+  path           = "${var.secrets_mount_path}/static-role/${each.key}"
+  disable_read   = true
+  disable_delete = false
+
+  data_json = jsonencode({
+    username        = each.value.username
+    dn              = each.value.dn
+    rotation_period = "${var.static_role_rotation_period}s"
+  })
+
+  depends_on = [vault_generic_endpoint.ldap_config]
+}
+
+# Dual-account static role for Vault Agent sidecar (svc-rotate-c / svc-rotate-d)
+resource "vault_generic_endpoint" "ldap_vault_agent_dual_role" {
+  count = var.ldap_dual_account ? 1 : 0
+
+  path = "${var.secrets_mount_path}/static-role/vault-agent-dual-role"
 
   disable_read   = true
   disable_delete = false
 
   data_json = jsonencode({
-    username        = var.static_roles[each.value].username
-    dn              = var.static_roles[each.value].dn
-    rotation_period = "${var.static_role_rotation_period}s"
+    username          = "svc-rotate-c"
+    dn                = "CN=svc-rotate-c,CN=Users,DC=mydomain,DC=local"
+    username_b        = "svc-rotate-d"
+    dn_b              = "CN=svc-rotate-d,CN=Users,DC=mydomain,DC=local"
+    rotation_period   = "${var.static_role_rotation_period}s"
+    dual_account_mode = true
+    grace_period      = "${var.grace_period}s"
+  })
+
+  depends_on = [vault_generic_endpoint.ldap_config]
+}
+
+# Dual-account static role for CSI Driver (svc-rotate-e / svc-rotate-f)
+resource "vault_generic_endpoint" "ldap_csi_dual_role" {
+  count = var.ldap_dual_account ? 1 : 0
+
+  path = "${var.secrets_mount_path}/static-role/csi-dual-role"
+
+  disable_read   = true
+  disable_delete = false
+
+  data_json = jsonencode({
+    username          = "svc-rotate-e"
+    dn                = "CN=svc-rotate-e,CN=Users,DC=mydomain,DC=local"
+    username_b        = "svc-rotate-f"
+    dn_b              = "CN=svc-rotate-f,CN=Users,DC=mydomain,DC=local"
+    rotation_period   = "${var.static_role_rotation_period}s"
+    dual_account_mode = true
+    grace_period      = "${var.grace_period}s"
   })
 
   depends_on = [vault_generic_endpoint.ldap_config]

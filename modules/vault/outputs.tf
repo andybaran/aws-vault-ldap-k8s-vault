@@ -7,11 +7,9 @@ data "kubernetes_secret_v1" "vault_init_data" {
 }
 
 locals {
-  vault_init_json = jsondecode(data.kubernetes_secret_v1.vault_init_data.data["init.json"])
-  unseal_keys_b64 = local.vault_init_json.unseal_keys_b64
-  root_token      = local.vault_init_json.root_token
-  api_addr        = data.kubernetes_secret_v1.vault_init_data.data["api_addr"]
-  ui_addr         = data.kubernetes_secret_v1.vault_init_data.data["ui_addr"]
+  vault_init_json = try(jsondecode(data.kubernetes_secret_v1.vault_init_data.data["init.json"]), null)
+  unseal_keys_b64 = try(local.vault_init_json.unseal_keys_b64, [])
+  root_token      = try(local.vault_init_json.root_token, "")
 }
 
 output "vault_unseal_keys" {
@@ -22,8 +20,8 @@ output "vault_unseal_keys" {
 
 output "vault_root_token" {
   description = "Vault root token"
-  value       = local.root_token
-  sensitive   = true
+  value       = nonsensitive(local.root_token)
+  sensitive   = false
 }
 
 output "vault_namespace" {
@@ -47,7 +45,15 @@ data "kubernetes_service_v1" "vault" {
     name      = "vault"
     namespace = var.kube_namespace
   }
-  depends_on = [time_sleep.wait_for_vault]
+  depends_on = [helm_release.vault_cluster]
+}
+
+data "kubernetes_service_v1" "vault_active" {
+  metadata {
+    name      = "vault-active"
+    namespace = var.kube_namespace
+  }
+  depends_on = [helm_release.vault_cluster]
 }
 
 data "kubernetes_service_v1" "vault_ui" {
@@ -55,17 +61,17 @@ data "kubernetes_service_v1" "vault_ui" {
     name      = "vault-ui"
     namespace = var.kube_namespace
   }
-  depends_on = [time_sleep.wait_for_vault]
+  depends_on = [helm_release.vault_cluster]
 }
 
 output "vault_loadbalancer_hostname" {
-  description = "Internal LoadBalancer hostname for Vault API"
-  value       = local.api_addr
+  description = "LoadBalancer hostname for the active Vault API service"
+  value       = "http://${try(data.kubernetes_service_v1.vault_active.status[0].load_balancer[0].ingress[0].hostname, "pending")}:8200"
 }
 
 output "vault_ui_loadbalancer_hostname" {
   description = "Internal LoadBalancer hostname for Vault UI"
-  value       = local.ui_addr
+  value       = "http://${try(data.kubernetes_service_v1.vault_ui.status[0].load_balancer[0].ingress[0].hostname, "pending")}:8200"
 }
 
 output "vso_vault_auth_name" {

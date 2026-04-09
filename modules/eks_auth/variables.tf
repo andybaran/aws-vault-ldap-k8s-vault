@@ -1,4 +1,4 @@
-variable "eks_cluster_name" {
-  description = "EKS cluster name or an aws eks update-kubeconfig command string containing the cluster name"
+variable "cluster_name" {
+  description = "EKS cluster name or ID used to derive an auth token."
   type        = string
 }

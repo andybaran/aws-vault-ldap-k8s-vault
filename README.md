@@ -2,56 +2,51 @@
 
 Terraform Cloud Stacks repo for the Vault slice of the `aws-vault-ldap-k8s` demo.
 
-This stack owns the Vault runtime on EKS, Vault Secrets Operator integration, and the LDAP secrets engine configuration that bridges Active Directory credentials into the demo workloads. It intentionally stays focused on Vault concerns and consumes upstream contracts from the sibling Kubernetes and Active Directory stacks.
+This repository owns the Vault runtime on Kubernetes, Vault Secrets Operator integration, and the LDAP secrets engine configuration that turns the Active Directory seed data into app-facing Vault contracts. It intentionally stays focused on Vault concerns and consumes the shared EKS and AD context from sibling stacks.
 
-## Scope
+## Stack purpose
 
-- deploy Vault Enterprise on the shared EKS cluster
-- initialize Vault and install Vault Secrets Operator
-- configure the LDAP secrets engine and Vault Kubernetes auth
-- publish the app-facing Vault contract for downstream stacks
+- deploy Vault Enterprise onto the shared EKS platform
+- derive EKS authentication locally from AWS instead of depending on a published upstream token
+- configure the LDAP secrets engine and Vault Kubernetes auth using AD seed data
+- publish the Vault outputs the app stack needs while keeping operator-only secrets as regular stack outputs
 
-## Upstream stacks
+## Repository layout
 
-This stack is wired to these upstream Terraform Stacks addresses in `deployments.tfdeploy.hcl`:
+- `modules/vault` - copied from the source repo and kept focused on the Vault Helm/VSO deployment
+- `modules/vault_ldap_secrets` - copied from the source repo for LDAP secrets engine and Vault auth configuration
+- `modules/eks_auth` - small helper module that derives an EKS auth token via the AWS provider
+- `components.tfcomponent.hcl` - Vault component graph and split-repo wiring
+- `providers.tfcomponent.hcl` - AWS, Kubernetes, Helm, and Vault provider configuration
+- `variables.tfcomponent.hcl` - deployment inputs for AWS, EKS context, and LDAP seed data
+- `outputs.tfcomponent.hcl` - operator outputs and downstream app-facing contracts
+- `deployments.tfdeploy.hcl` - linked-stack dependencies, shared varset usage, and published outputs
 
-- k8s: `app.terraform.io/andybaran/ldap-stack/aws-vault-ldap-k8s-k8s`
-- ad: `app.terraform.io/andybaran/ldap-stack/aws-vault-ldap-k8s-ad`
+## Upstream linked-stack contract
 
-The current deployment logic expects:
+This stack consumes linked-stack outputs from:
 
-### From the k8s stack
+- `app.terraform.io/andybaran/ldap stack/aws-vault-ldap-k8s-k8s`
+- `app.terraform.io/andybaran/ldap stack/aws-vault-ldap-k8s-ad`
+
+Expected inputs from the k8s stack:
 
 - `region`
-- `cluster_id` or `cluster_name`
-- `kube_namespace` (defaults to `default` if not published)
+- `cluster_endpoint`
+- `cluster_ca_data`
+- `cluster_name` or `cluster_id`
+- `kube_namespace`
 
-The Vault stack derives live EKS auth data locally from AWS with `modules/eks_auth` instead of consuming a published EKS bearer token.
+Expected inputs from the ad stack:
 
-### From the ad stack
+- `ldap_url`
+- `ldap_binddn`
+- `ldap_userdn`
+- `ldap_bootstrap_secret_arn`
 
-- `static_roles`
-- `active_directory_domain` (or the source defaults)
-- either `ldap_url` or `dc_private_ip`
-- either `ldap_bindpass` or `password`
-- optionally `ldap_binddn` and `ldap_userdn`
+## Downstream linked-stack contract
 
-## Components
-
-- `modules/eks_auth` derives EKS endpoint, CA data, and a short-lived auth token from the AWS provider.
-- `modules/vault` deploys Vault, writes the license secret, initializes the cluster, and installs VSO.
-- `modules/vault_ldap_secrets` configures the LDAP secrets engine and Vault Kubernetes auth roles after Vault is available.
-
-## Defaults preserved from the source demo
-
-- `ldap_dual_account = true`
-- `grace_period = 20`
-- `static_role_rotation_period = 100`
-- official Vault Enterprise image by default, switching to the dual-account plugin image only when dual-account mode is enabled
-
-## Downstream published outputs
-
-This stack publishes the values the app stack needs:
+This stack publishes the app-facing outputs below:
 
 - `ldap_mount_path`
 - `vso_vault_auth_name`
@@ -63,13 +58,25 @@ This stack publishes the values the app stack needs:
 - `vault_api_addr`
 - `vault_ui_addr`
 
-Operator-focused values like the Vault root token remain regular stack outputs only and are not published as linked-stack contracts.
+It also publishes `ldap_secrets_mount_path` as a compatibility alias.
 
-## Validation
+## Demo defaults preserved from the source repo
 
-Run from the repository root:
+- `ldap_dual_account = true`
+- `grace_period = 20`
+- `static_role_rotation_period = 100`
+- base Vault image default remains `hashicorp/vault-enterprise:1.21.2-ent`, with the dual-account demo automatically switching to the custom plugin image from the monolith
+
+The development deployment uses the shared AWS credentials varset `varset-oUu39eyQUoDbmxE1` and does not default to destroy mode.
+
+## Operator outputs
+
+Useful operator outputs such as the Vault root token and unseal keys remain regular stack outputs for the demo, but they are not published as linked-stack contracts.
+
+## Local validation
 
 ```bash
+terraform fmt -recursive
 terraform stacks fmt
 terraform stacks init
 terraform stacks validate

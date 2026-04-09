@@ -6,8 +6,6 @@ resource "helm_release" "vault_cluster" {
   namespace  = var.kube_namespace
   version    = "0.31.0"
 
-  depends_on = [kubernetes_secret_v1.vault_license]
-
   values = var.ldap_dual_account ? [<<-YAML
 server:
   ha:

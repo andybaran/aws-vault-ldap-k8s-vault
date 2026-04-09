@@ -6,27 +6,55 @@ applyTo: "*.tf,*.hcl,*.md"
 
 ## Goal
 
-Own the Vault slice of the demo. This repo should deploy Vault on the shared EKS cluster, configure Vault Secrets Operator and the LDAP secrets engine, and publish the contract the downstream app stack consumes.
+Own the Vault slice of the Terraform Cloud Stacks split demo. This repo deploys Vault onto the shared EKS platform, configures Vault Secrets Operator plus the LDAP secrets engine, and publishes the Vault/app contract consumed by the app stack.
 
 ## Scope
 
-- Vault runtime on Kubernetes
-- Vault initialization and licensing prerequisites that used to live in the monolith's `kube1` module
-- Vault Secrets Operator and Kubernetes auth wiring
-- LDAP secrets engine configuration fed by the AD stack
-- linked-stack outputs consumed by the app stack
+- Vault Helm deployment and supporting Kubernetes resources
+- Vault Secrets Operator, VaultConnection, VaultAuth, and Vault Kubernetes auth wiring
+- LDAP secrets engine configuration backed by the Active Directory stack's seed data
+- local derivation of EKS auth data from the AWS provider
+- documentation for linked-stack contracts and useful operator outputs
+
+## Linked-stack contract
+
+Expected upstream stack sources:
+
+- `app.terraform.io/andybaran/ldap stack/aws-vault-ldap-k8s-k8s`
+- `app.terraform.io/andybaran/ldap stack/aws-vault-ldap-k8s-ad`
+
+Expected upstream outputs from the k8s stack:
+
+- `region`
+- `cluster_endpoint`
+- `cluster_ca_data`
+- `cluster_name` or `cluster_id`
+- `kube_namespace`
+
+Expected upstream outputs from the ad stack:
+
+- `ldap_url`
+- `ldap_binddn`
+- `ldap_userdn`
+- `ldap_bootstrap_secret_arn`
+
+Expected published outputs for the app stack:
+
+- `ldap_mount_path`
+- `vso_vault_auth_name`
+- `vault_app_auth_role_name`
+- `ldap_dual_account`
+- `grace_period`
+- `static_role_rotation_period`
+- `vault_service_name`
+- `vault_api_addr`
+- `vault_ui_addr`
 
 ## Guardrails
 
-- Keep using Terraform Stacks root files and explicit linked-stack contracts.
-- Keep this repo focused on Vault concerns. Do not absorb EKS platform ownership, AD infrastructure ownership, or app code.
-- Consume k8s and ad dependencies through `upstream_input` blocks in `deployments.tfdeploy.hcl`.
-- Derive EKS auth locally from the AWS provider instead of consuming a published EKS auth token.
-- Preserve the demo defaults unless a requirement says otherwise:
-  - `ldap_dual_account = true`
-  - `grace_period = 20`
-  - `static_role_rotation_period = 100`
-- Do not reintroduce unused monolith variables like `vault_public_endpoint` or `vault_root_namespace` unless they become necessary.
-- Keep secrets out of git and prefer Terraform Cloud variable sets or linked-stack outputs for sensitive values.
-- Do not publish sensitive operator values like the Vault root token as linked-stack contracts.
-- When the Vault/app contract changes, update `README.md`, stack outputs, and `publish_output` blocks in the same change.
+- Keep using Terraform Stacks root files and explicit `upstream_input` plus `publish_output` blocks.
+- Keep this repo limited to Vault concerns. Do not absorb EKS platform ownership, AD infrastructure ownership, or app workload ownership.
+- Derive the EKS auth token locally via AWS instead of depending on a published upstream token.
+- Preserve the demo defaults for dual-account LDAP rotation unless there is a repo-specific reason to change them.
+- Keep operator-only secrets such as the Vault root token as regular stack outputs only; do not publish them as linked-stack contracts.
+- When the Vault/app contract changes, update this file and the README in the same change.

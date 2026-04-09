@@ -14,8 +14,6 @@ output "static_role_names" {
     (var.dual_account_static_role_name) = var.dual_account_static_role_name
     "vault-agent-dual-role"             = "vault-agent-dual-role"
     "csi-dual-role"                     = "csi-dual-role"
-    "svc-single"                        = "svc-single"
-    "svc-lib"                           = "svc-lib"
   } : { for k, v in vault_ldap_secret_backend_static_role.roles : k => v.role_name }
 }
 

@@ -34,7 +34,7 @@ resource "helm_release" "vault_secrets_operator" {
 resource "kubernetes_manifest" "vault_connection" {
   depends_on = [
     helm_release.vault_secrets_operator,
-    data.kubernetes_service_v1.vault
+    data.kubernetes_service_v1.vault_active
   ]
 
   manifest = {
@@ -45,7 +45,7 @@ resource "kubernetes_manifest" "vault_connection" {
       namespace = var.kube_namespace
     }
     spec = {
-      address       = "http://${try(data.kubernetes_service_v1.vault.status[0].load_balancer[0].ingress[0].hostname, "vault.${var.kube_namespace}.svc.cluster.local")}:8200"
+      address       = "http://vault-active.${var.kube_namespace}.svc.cluster.local:8200"
       skipTLSVerify = true
     }
   }

@@ -1,6 +1,19 @@
 # Vault provider configuration
 # Note: This requires the Vault provider to be configured in your root module
 # The provider should point to the Vault service endpoint
+
+
+# Secrets
+
+
+resource "kubernetes_secret_v1" "vault-init-data" {
+  metadata {
+    name      = "vault-init-data"
+    namespace = var.kube_namespace
+  }
+  type = "Opaque"
+}
+
 # Service Account for the Job
 resource "kubernetes_service_account_v1" "secret_writer" {
   metadata {
@@ -44,15 +57,17 @@ resource "kubernetes_role_binding_v1" "secret_writer" {
   }
 }
 
+
+
 # Wait for Vault pods to be ready
-resource "time_sleep" "wait_for_vault" {
-  depends_on      = [helm_release.vault_cluster]
-  create_duration = "60s"
-}
+# resource "time_sleep" "wait_for_vault" {
+#   depends_on      = [helm_release.vault_cluster]
+#   create_duration = "60s"
+# }
 
 # Use Kubernetes exec to initialize Vault
 resource "kubernetes_job_v1" "vault_init" {
-  depends_on = [time_sleep.wait_for_vault]
+  # depends_on = [time_sleep.wait_for_vault]
 
   metadata {
     name      = "vault-init"
@@ -82,33 +97,6 @@ resource "kubernetes_job_v1" "vault_init" {
             wget https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64
             chmod +x jq-linux-amd64
 
-            wait_for_lb_hostname() {
-              local service_name="$1"
-              local hostname=""
-
-              until [ -n "$hostname" ]; do
-                hostname=$(./kubectl get service "$service_name" -n ${var.kube_namespace} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
-                if [ -z "$hostname" ]; then
-                  echo "Waiting for $${service_name} load balancer hostname..."
-                  sleep 5
-                fi
-              done
-
-              printf '%s' "$hostname"
-            }
-
-            write_init_secret() {
-              local vault_api_host vault_ui_host
-              vault_api_host=$(wait_for_lb_hostname vault)
-              vault_ui_host=$(wait_for_lb_hostname vault-ui)
-
-              ./kubectl create secret generic vault-init-data \
-                --from-file=init.json=/tmp/init.json \
-                --from-literal=api_addr=http://$${vault_api_host}:8200 \
-                --from-literal=ui_addr=http://$${vault_ui_host}:8200 \
-                -n ${var.kube_namespace} --dry-run=client -o yaml | ./kubectl apply -f -
-            }
-
             # Wait for Vault to be responsive
             until nc -z $(getent hosts vault-0.vault-internal | awk '{print $1}') 8200; do
               echo "Waiting for Vault..."
@@ -119,6 +107,10 @@ resource "kubernetes_job_v1" "vault_init" {
             if vault status | grep -q "Initialized.*false"; then
               # Initialize Vault
               vault operator init -key-shares=5 -key-threshold=3 -format=json > /tmp/init.json
+              cat /tmp/init.json
+
+              # Store init data in Kubernetes secret
+              ./kubectl create secret generic vault-init-data --from-file=init.json=/tmp/init.json -n ${var.kube_namespace} --dry-run=client -o yaml | ./kubectl apply -f -
 
               # Unseal Vault using the keys
               UNSEAL_KEY_1=$(./jq-linux-amd64 -r '.unseal_keys_b64[0:1][]' /tmp/init.json)
@@ -168,20 +160,15 @@ resource "kubernetes_job_v1" "vault_init" {
               vault operator unseal $UNSEAL_KEY_2
               vault operator unseal $UNSEAL_KEY_3
 
-              write_init_secret
-
               echo "Vault cluster initialized and all nodes joined successfully"
            else
-              echo "Vault already initialized"
+             echo "Vault already initialized"
 
              # Check if vault-0, vault-1 and vault-2 need to be unsealed
              export VAULT_ADDR=http://vault-0.vault-internal:8200
 
-              # Try to get the stored init data
-              if ! ./kubectl get secret vault-init-data -n ${var.kube_namespace} -o jsonpath='{.data.init\.json}' | base64 -d > /tmp/init.json; then
-                echo "Vault is already initialized but the vault-init-data secret is missing. Recreate or reseed the init secret before adopting this cluster with the split stack." >&2
-                exit 1
-              fi
+             # Try to get the stored init data
+             ./kubectl get secret vault-init-data -n ${var.kube_namespace} -o jsonpath='{.data.init\.json}' | base64 -d > /tmp/init.json
 
              UNSEAL_KEY_1=$(./jq-linux-amd64 -r '.unseal_keys_b64[0:1][]' /tmp/init.json)
              UNSEAL_KEY_2=$(./jq-linux-amd64 -r '.unseal_keys_b64[1:2][]' /tmp/init.json)
@@ -214,22 +201,20 @@ resource "kubernetes_job_v1" "vault_init" {
 
              # Check and unseal vault-2 if needed
              export VAULT_ADDR=http://vault-2.vault-internal:8200
-              if nc -z $(getent hosts vault-2.vault-internal | awk '{print $1}') 8200; then
-                echo "Checking vault-2 status..."
-                if vault status | grep -q "Sealed.*true"; then
+             if nc -z $(getent hosts vault-2.vault-internal | awk '{print $1}') 8200; then
+               echo "Checking vault-2 status..."
+               if vault status | grep -q "Sealed.*true"; then
                  echo "Unsealing vault-2..."
                  vault operator unseal $UNSEAL_KEY_1
                  vault operator unseal $UNSEAL_KEY_2
                  vault operator unseal $UNSEAL_KEY_3
                else
                  echo "vault-2 is already unsealed"
-                fi
-              fi
-
-              write_init_secret
-            fi
-           EOT
-           ]
+               fi
+             fi
+           fi
+          EOT
+          ]
 
           env {
             name  = "VAULT_ADDR"
@@ -245,7 +230,9 @@ resource "kubernetes_job_v1" "vault_init" {
   wait_for_completion = true
 
   timeouts {
-    create = "10m"
-    update = "10m"
+    create = "5m"
+    update = "5m"
   }
 }
+
+
